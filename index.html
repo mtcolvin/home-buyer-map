@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Home Buyer Map - Find Your Perfect Neighborhood</title>
+    <meta name="description" content="Find your perfect home location with our interactive multi-step neighborhood finder">
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="header-content">
+                <h1 class="app-title">Home Buyer Map</h1>
+                <p class="app-subtitle">Find your perfect neighborhood in 5 easy steps</p>
+            </div>
+        </header>
+
+        <!-- Progress Bar -->
+        <div class="progress-container">
+            <div class="progress-steps">
+                <div class="progress-step active" data-step="1">
+                    <div class="step-circle">1</div>
+                    <div class="step-label">Area</div>
+                </div>
+                <div class="progress-line"></div>
+                <div class="progress-step" data-step="2">
+                    <div class="step-circle">2</div>
+                    <div class="step-label">Criteria</div>
+                </div>
+                <div class="progress-line"></div>
+                <div class="progress-step" data-step="3">
+                    <div class="step-circle">3</div>
+                    <div class="step-label">Preferences</div>
+                </div>
+                <div class="progress-line"></div>
+                <div class="progress-step" data-step="4">
+                    <div class="step-circle">4</div>
+                    <div class="step-label">Review</div>
+                </div>
+                <div class="progress-line"></div>
+                <div class="progress-step" data-step="5">
+                    <div class="step-circle">5</div>
+                    <div class="step-label">Explore</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <!-- Step 1: Choose Area -->
+            <section class="wizard-step active" id="step1">
+                <div class="step-content">
+                    <div class="step-header">
+                        <h2>Where do you want to live?</h2>
+                        <p>Click on the map or search for a city to get started</p>
+                    </div>
+
+                    <div class="form-section">
+                        <div class="search-box">
+                            <input type="text" id="citySearch" placeholder="Search for a city or zip code..." class="search-input">
+                            <button class="search-btn" id="searchBtn">Search</button>
+                        </div>
+
+                        <div class="map-container">
+                            <div id="map"></div>
+                        </div>
+
+                        <div class="selected-area" id="selectedArea" style="display: none;">
+                            <div class="alert alert-success">
+                                <strong>Selected Area:</strong> <span id="areaName">Not selected</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Step 2: Set Criteria -->
+            <section class="wizard-step" id="step2">
+                <div class="step-content">
+                    <div class="step-header">
+                        <h2>What are your home requirements?</h2>
+                        <p>Set your budget and property preferences</p>
+                    </div>
+
+                    <div class="form-section">
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="priceMin">Minimum Price</label>
+                                <select id="priceMin" class="form-control">
+                                    <option value="0">No minimum</option>
+                                    <option value="100000">$100,000</option>
+                                    <option value="200000">$200,000</option>
+                                    <option value="300000">$300,000</option>
+                                    <option value="400000">$400,000</option>
+                                    <option value="500000">$500,000</option>
+                                    <option value="750000">$750,000</option>
+                                    <option value="1000000">$1,000,000</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="priceMax">Maximum Price</label>
+                                <select id="priceMax" class="form-control">
+                                    <option value="9999999">No maximum</option>
+                                    <option value="200000">$200,000</option>
+                                    <option value="300000">$300,000</option>
+                                    <option value="400000">$400,000</option>
+                                    <option value="500000">$500,000</option>
+                                    <option value="750000">$750,000</option>
+                                    <option value="1000000">$1,000,000</option>
+                                    <option value="1500000">$1,500,000</option>
+                                    <option value="2000000">$2,000,000+</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group full-width">
+                                <label>Property Type</label>
+                                <div class="checkbox-group">
+                                    <label class="checkbox-label">
+                                        <input type="checkbox" name="propertyType" value="house" checked>
+                                        <span>Single Family House</span>
+                                    </label>
+                                    <label class="checkbox-label">
+                                        <input type="checkbox" name="propertyType" value="condo">
+                                        <span>Condo/Apartment</span>
+                                    </label>
+                                    <label class="checkbox-label">
+                                        <input type="checkbox" name="propertyType" value="townhouse">
+                                        <span>Townhouse</span>
+                                    </label>
+                                    <label class="checkbox-label">
+                                        <input type="checkbox" name="propertyType" value="multi">
+                                        <span>Multi-Family</span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="bedrooms">Bedrooms</label>
+                                <select id="bedrooms" class="form-control">
+                                    <option value="0">Any</option>
+                                    <option value="1">1+</option>
+                                    <option value="2">2+</option>
+                                    <option value="3">3+</option>
+                                    <option value="4">4+</option>
+                                    <option value="5">5+</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="bathrooms">Bathrooms</label>
+                                <select id="bathrooms" class="form-control">
+                                    <option value="0">Any</option>
+                                    <option value="1">1+</option>
+                                    <option value="1.5">1.5+</option>
+                                    <option value="2">2+</option>
+                                    <option value="2.5">2.5+</option>
+                                    <option value="3">3+</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="sqftMin">Min Square Feet</label>
+                                <input type="number" id="sqftMin" class="form-control" placeholder="e.g., 1000" min="0" step="100">
+                            </div>
+
+                            <div class="form-group">
+                                <label for="sqftMax">Max Square Feet</label>
+                                <input type="number" id="sqftMax" class="form-control" placeholder="e.g., 3000" min="0" step="100">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Step 3: Location Preferences -->
+            <section class="wizard-step" id="step3">
+                <div class="step-content">
+                    <div class="step-header">
+                        <h2>What's important for your location?</h2>
+                        <p>Set commute preferences and nearby amenities</p>
+                    </div>
+
+                    <div class="form-section">
+                        <div class="form-group">
+                            <label for="commuteLocation">Commute To (Optional)</label>
+                            <input type="text" id="commuteLocation" class="form-control" placeholder="Enter work address or click on map">
+                            <button class="btn-secondary" id="setCommuteBtn" style="margin-top: 10px;">Set on Map</button>
+                        </div>
+
+                        <div id="commuteMapContainer" class="map-container-small" style="display: none;">
+                            <div id="commuteMap"></div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="maxCommute">Maximum Commute Time</label>
+                            <select id="maxCommute" class="form-control">
+                                <option value="0">Not important</option>
+                                <option value="15">15 minutes</option>
+                                <option value="20">20 minutes</option>
+                                <option value="30">30 minutes</option>
+                                <option value="45">45 minutes</option>
+                                <option value="60">60 minutes</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Nearby Amenities (Select all that apply)</label>
+                            <div class="checkbox-group">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" name="amenity" value="schools">
+                                    <span>Good Schools</span>
+                                </label>
+                                <label class="checkbox-label">
+                                    <input type="checkbox" name="amenity" value="parks">
+                                    <span>Parks & Recreation</span>
+                                </label>
+                                <label class="checkbox-label">
+                                    <input type="checkbox" name="amenity" value="shopping">
+                                    <span>Shopping Centers</span>
+                                </label>
+                                <label class="checkbox-label">
+                                    <input type="checkbox" name="amenity" value="restaurants">
+                                    <span>Restaurants</span>
+                                </label>
+                                <label class="checkbox-label">
+                                    <input type="checkbox" name="amenity" value="transit">
+                                    <span>Public Transit</span>
+                                </label>
+                                <label class="checkbox-label">
+                                    <input type="checkbox" name="amenity" value="hospitals">
+                                    <span>Hospitals/Healthcare</span>
+                                </label>
+                                <label class="checkbox-label">
+                                    <input type="checkbox" name="amenity" value="gyms">
+                                    <span>Gyms & Fitness</span>
+                                </label>
+                                <label class="checkbox-label">
+                                    <input type="checkbox" name="amenity" value="entertainment">
+                                    <span>Entertainment</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="neighborhoodType">Neighborhood Type</label>
+                            <select id="neighborhoodType" class="form-control">
+                                <option value="">No preference</option>
+                                <option value="urban">Urban - City center, walkable</option>
+                                <option value="suburban">Suburban - Residential, family-friendly</option>
+                                <option value="rural">Rural - Quiet, spacious</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Step 4: Review & Refine -->
+            <section class="wizard-step" id="step4">
+                <div class="step-content">
+                    <div class="step-header">
+                        <h2>Review Your Search Criteria</h2>
+                        <p>Make any final adjustments before exploring neighborhoods</p>
+                    </div>
+
+                    <div class="form-section">
+                        <div class="review-grid">
+                            <div class="review-card">
+                                <h3>Location</h3>
+                                <div class="review-item">
+                                    <span class="review-label">Search Area:</span>
+                                    <span class="review-value" id="reviewArea">Not set</span>
+                                </div>
+                            </div>
+
+                            <div class="review-card">
+                                <h3>Property Requirements</h3>
+                                <div class="review-item">
+                                    <span class="review-label">Price Range:</span>
+                                    <span class="review-value" id="reviewPrice">Not set</span>
+                                </div>
+                                <div class="review-item">
+                                    <span class="review-label">Property Types:</span>
+                                    <span class="review-value" id="reviewPropertyType">Not set</span>
+                                </div>
+                                <div class="review-item">
+                                    <span class="review-label">Bedrooms:</span>
+                                    <span class="review-value" id="reviewBedrooms">Any</span>
+                                </div>
+                                <div class="review-item">
+                                    <span class="review-label">Bathrooms:</span>
+                                    <span class="review-value" id="reviewBathrooms">Any</span>
+                                </div>
+                                <div class="review-item">
+                                    <span class="review-label">Square Feet:</span>
+                                    <span class="review-value" id="reviewSqft">Any</span>
+                                </div>
+                            </div>
+
+                            <div class="review-card">
+                                <h3>Location Preferences</h3>
+                                <div class="review-item">
+                                    <span class="review-label">Commute To:</span>
+                                    <span class="review-value" id="reviewCommute">Not set</span>
+                                </div>
+                                <div class="review-item">
+                                    <span class="review-label">Max Commute:</span>
+                                    <span class="review-value" id="reviewMaxCommute">Any</span>
+                                </div>
+                                <div class="review-item">
+                                    <span class="review-label">Amenities:</span>
+                                    <span class="review-value" id="reviewAmenities">None selected</span>
+                                </div>
+                                <div class="review-item">
+                                    <span class="review-label">Neighborhood Type:</span>
+                                    <span class="review-value" id="reviewNeighborhood">No preference</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="map-preview-container">
+                            <h3>Your Search Area</h3>
+                            <div class="map-container">
+                                <div id="reviewMap"></div>
+                            </div>
+                        </div>
+
+                        <div class="alert alert-info">
+                            <strong>Ready to explore?</strong> Click "Next" to enter neighborhood mode and find your perfect block!
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Step 5: Neighborhood Explorer -->
+            <section class="wizard-step" id="step5">
+                <div class="step-content full-height">
+                    <div class="step-header">
+                        <h2>Explore Neighborhoods</h2>
+                        <p>Zoom in and explore specific blocks to find your ideal location</p>
+                    </div>
+
+                    <div class="explorer-container">
+                        <div class="explorer-sidebar">
+                            <div class="criteria-summary">
+                                <h3>Your Criteria</h3>
+                                <div id="criteriaList"></div>
+                                <button class="btn-link" id="editCriteriaBtn">Edit Criteria</button>
+                            </div>
+
+                            <div class="neighborhood-info">
+                                <h3>Neighborhood Info</h3>
+                                <div id="neighborhoodDetails">
+                                    <p class="text-muted">Click on the map to see neighborhood details</p>
+                                </div>
+                            </div>
+
+                            <div class="actions">
+                                <button class="btn-secondary full-width" id="saveSearchBtn">Save This Search</button>
+                                <button class="btn-secondary full-width" id="shareSearchBtn">Share Search</button>
+                                <button class="btn-link full-width" id="startOverBtn">Start Over</button>
+                            </div>
+                        </div>
+
+                        <div class="explorer-map">
+                            <div id="explorerMap"></div>
+
+                            <!-- Map Controls -->
+                            <div class="map-controls">
+                                <button class="map-control-btn" id="zoomInBtn" title="Zoom In">+</button>
+                                <button class="map-control-btn" id="zoomOutBtn" title="Zoom Out">−</button>
+                                <button class="map-control-btn" id="recenterBtn" title="Re-center">⌖</button>
+                            </div>
+
+                            <!-- Legend -->
+                            <div class="map-legend">
+                                <h4>Legend</h4>
+                                <div class="legend-item">
+                                    <span class="legend-color" style="background: #4CAF50;"></span>
+                                    <span>High Match</span>
+                                </div>
+                                <div class="legend-item">
+                                    <span class="legend-color" style="background: #FFC107;"></span>
+                                    <span>Medium Match</span>
+                                </div>
+                                <div class="legend-item">
+                                    <span class="legend-color" style="background: #F44336;"></span>
+                                    <span>Low Match</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Navigation Buttons -->
+        <footer class="wizard-footer">
+            <div class="button-group">
+                <button class="btn btn-secondary" id="prevBtn" style="display: none;">Previous</button>
+                <button class="btn btn-primary" id="nextBtn">Next</button>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <!-- Custom JS -->
+    <script src="app.js"></script>
+</body>
+</html>

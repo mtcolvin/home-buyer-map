@@ -1,0 +1,18 @@
+{
+  "name": "home-buyer-map",
+  "version": "1.0.0",
+  "description": "A polished multi-step application to help home buyers find their ideal neighborhood",
+  "main": "index.html",
+  "scripts": {
+    "start": "python3 -m http.server 8000",
+    "test": "echo \"No tests yet\" && exit 0"
+  },
+  "keywords": [
+    "real-estate",
+    "map",
+    "home-buying",
+    "neighborhood-search"
+  ],
+  "author": "",
+  "license": "MIT"
+}
