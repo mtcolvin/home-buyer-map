@@ -11,6 +11,12 @@
 
     <!-- Custom CSS -->
     <link rel="stylesheet" href="styles.css">
+
+    <!-- Leaflet JS (loaded early for heat map plugin) -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <!-- Leaflet Heat Map Plugin -->
+    <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
 </head>
 <body>
     <div class="app-container">
@@ -381,18 +387,15 @@
 
                             <!-- Legend -->
                             <div class="map-legend">
-                                <h4>Legend</h4>
-                                <div class="legend-item">
-                                    <span class="legend-color" style="background: #4CAF50;"></span>
-                                    <span>High Match</span>
+                                <h4>Match Intensity</h4>
+                                <div class="legend-gradient"></div>
+                                <div class="legend-labels">
+                                    <span>Low</span>
+                                    <span>Medium</span>
+                                    <span>High</span>
                                 </div>
-                                <div class="legend-item">
-                                    <span class="legend-color" style="background: #FFC107;"></span>
-                                    <span>Medium Match</span>
-                                </div>
-                                <div class="legend-item">
-                                    <span class="legend-color" style="background: #F44336;"></span>
-                                    <span>Low Match</span>
+                                <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border-color); font-size: 0.8rem; color: var(--text-secondary);">
+                                    Hover over areas for details
                                 </div>
                             </div>
                         </div>
@@ -409,9 +412,6 @@
             </div>
         </footer>
     </div>
-
-    <!-- Leaflet JS -->
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <!-- Custom JS -->
     <script src="app.js"></script>

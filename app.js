@@ -1,5 +1,5 @@
 /**
- * Home Buyer Map - Main Application Logic
+ * Home Buyer Map - Enhanced Application with Heat Maps and Crime Data
  */
 
 // ===================================
@@ -33,7 +33,188 @@ const AppState = {
             neighborhoodType: ''
         }
     },
-    maps: {}
+    maps: {},
+    heatmapData: [],
+    neighborhoodData: []
+};
+
+// ===================================
+// Crime Data Service (Simulated)
+// ===================================
+
+const CrimeDataService = {
+    /**
+     * Simulates crime data API call
+     * In production, this would call actual crime APIs like:
+     * - FBI Crime Data API
+     * - Local police department APIs
+     * - CrimeReports.com API
+     */
+    async getCrimeData(lat, lng, radius = 5) {
+        // Simulate API delay
+        await new Promise(resolve => setTimeout(resolve, 300));
+
+        // Generate realistic mock crime data
+        const baseRate = 20 + Math.random() * 30; // crimes per 1000 residents
+
+        return {
+            crimeRate: baseRate,
+            violent: Math.floor(baseRate * 0.25),
+            property: Math.floor(baseRate * 0.75),
+            trend: Math.random() > 0.5 ? 'decreasing' : 'increasing',
+            safetyScore: this.calculateSafetyScore(baseRate)
+        };
+    },
+
+    calculateSafetyScore(crimeRate) {
+        // Lower crime rate = higher safety score
+        // Scale: 0-100, where 100 is safest
+        const maxCrimeRate = 100;
+        return Math.max(0, Math.min(100, Math.round((1 - (crimeRate / maxCrimeRate)) * 100)));
+    },
+
+    getCrimeLevel(safetyScore) {
+        if (safetyScore >= 75) return { level: 'Low', class: 'crime-low' };
+        if (safetyScore >= 50) return { level: 'Medium', class: 'crime-medium' };
+        return { level: 'High', class: 'crime-high' };
+    }
+};
+
+// ===================================
+// Scoring Algorithm
+// ===================================
+
+const ScoringEngine = {
+    /**
+     * Calculate neighborhood match score based on multiple factors
+     */
+    async calculateScore(lat, lng, criteria, preferences) {
+        const scores = {
+            crime: 0,
+            schools: 0,
+            amenities: 0,
+            commute: 0,
+            price: 0,
+            overall: 0
+        };
+
+        const reasons = [];
+
+        // 1. Crime Score (30% weight)
+        const crimeData = await CrimeDataService.getCrimeData(lat, lng);
+        scores.crime = crimeData.safetyScore;
+
+        if (crimeData.safetyScore >= 75) {
+            reasons.push('Low crime rate in this area');
+        } else if (crimeData.safetyScore < 50) {
+            reasons.push('Higher crime rate - consider safety measures');
+        }
+
+        // 2. Schools Score (25% weight)
+        // Simulated based on location variations
+        const schoolVariation = Math.sin(lat * 100) * Math.cos(lng * 100);
+        scores.schools = Math.max(0, Math.min(100, 50 + schoolVariation * 50));
+
+        if (preferences.amenities.includes('schools')) {
+            if (scores.schools >= 70) {
+                reasons.push('Excellent school ratings in the area');
+            } else if (scores.schools < 50) {
+                reasons.push('School ratings below average');
+            }
+        }
+
+        // 3. Amenities Score (20% weight)
+        scores.amenities = this.calculateAmenitiesScore(lat, lng, preferences.amenities);
+
+        if (scores.amenities >= 70 && preferences.amenities.length > 0) {
+            reasons.push(`Good access to ${preferences.amenities.length} desired amenities`);
+        }
+
+        // 4. Commute Score (15% weight)
+        if (preferences.commuteCoords && preferences.maxCommute > 0) {
+            scores.commute = this.calculateCommuteScore(
+                lat, lng,
+                preferences.commuteCoords.lat,
+                preferences.commuteCoords.lng,
+                preferences.maxCommute
+            );
+
+            if (scores.commute >= 80) {
+                reasons.push('Short commute to work location');
+            } else if (scores.commute < 40) {
+                reasons.push('Longer commute time expected');
+            }
+        } else {
+            scores.commute = 75; // Neutral if no commute preference
+        }
+
+        // 5. Price Score (10% weight)
+        // Simulated property price variation
+        const priceVariation = Math.sin(lat * 50) * Math.cos(lng * 50);
+        const avgPrice = 500000 + priceVariation * 300000;
+
+        if (avgPrice >= criteria.priceMin && avgPrice <= criteria.priceMax) {
+            scores.price = 90;
+            reasons.push('Properties within your price range');
+        } else if (avgPrice > criteria.priceMax) {
+            scores.price = 40;
+            reasons.push('Properties may exceed your budget');
+        } else {
+            scores.price = 60;
+            reasons.push('Limited inventory in this price range');
+        }
+
+        // Calculate weighted overall score
+        scores.overall = Math.round(
+            scores.crime * 0.30 +
+            scores.schools * 0.25 +
+            scores.amenities * 0.20 +
+            scores.commute * 0.15 +
+            scores.price * 0.10
+        );
+
+        return { scores, reasons, crimeData, avgPrice: Math.round(avgPrice) };
+    },
+
+    calculateAmenitiesScore(lat, lng, desiredAmenities) {
+        if (desiredAmenities.length === 0) return 75; // Neutral if no preferences
+
+        // Simulate amenity availability based on location
+        const urbanFactor = Math.abs(Math.sin(lat * 10) * Math.cos(lng * 10));
+        const baseScore = 40 + urbanFactor * 40;
+
+        // Boost score based on number of desired amenities
+        const amenityBoost = Math.min(20, desiredAmenities.length * 3);
+
+        return Math.min(100, Math.round(baseScore + amenityBoost));
+    },
+
+    calculateCommuteScore(homeLat, homeLng, workLat, workLng, maxCommute) {
+        // Calculate straight-line distance (in practice, use routing API)
+        const R = 3959; // Earth's radius in miles
+        const dLat = this.toRad(workLat - homeLat);
+        const dLng = this.toRad(workLng - homeLng);
+
+        const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                  Math.cos(this.toRad(homeLat)) * Math.cos(this.toRad(workLat)) *
+                  Math.sin(dLng/2) * Math.sin(dLng/2);
+
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        const distance = R * c;
+
+        // Estimate commute time (assuming 30 mph average in city)
+        const estimatedMinutes = (distance / 30) * 60;
+
+        // Score based on how it compares to max commute
+        if (estimatedMinutes <= maxCommute * 0.5) return 100;
+        if (estimatedMinutes <= maxCommute) return 80;
+        if (estimatedMinutes <= maxCommute * 1.5) return 50;
+        return 20;
+    },
+
+    toRad(degrees) {
+        return degrees * (Math.PI / 180);
+    }
 };
 
 // ===================================
@@ -41,20 +222,23 @@ const AppState = {
 // ===================================
 
 const MapManager = {
+    heatLayer: null,
+    customTooltip: null,
+    invisibleMarkerLayer: null,
+
     init() {
-        // Initialize main map (Step 1)
         this.initMainMap();
     },
 
     initMainMap() {
         const map = L.map('map').setView([AppState.searchData.location.lat, AppState.searchData.location.lng], 12);
 
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap contributors',
+        // Use dark-themed map tiles
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+            attribution: '© OpenStreetMap contributors, © CARTO',
             maxZoom: 19
         }).addTo(map);
 
-        // Add click handler
         map.on('click', (e) => {
             this.handleMapClick(e, map);
         });
@@ -65,21 +249,17 @@ const MapManager = {
     handleMapClick(e, map) {
         const { lat, lng } = e.latlng;
 
-        // Remove existing markers
         map.eachLayer((layer) => {
             if (layer instanceof L.Marker) {
                 map.removeLayer(layer);
             }
         });
 
-        // Add new marker
         const marker = L.marker([lat, lng]).addTo(map);
 
-        // Update state
         AppState.searchData.location.lat = lat;
         AppState.searchData.location.lng = lng;
 
-        // Geocode to get place name (simplified version)
         this.reverseGeocode(lat, lng);
     },
 
@@ -91,7 +271,6 @@ const MapManager = {
             const name = data.display_name || `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
             AppState.searchData.location.name = name;
 
-            // Update UI
             document.getElementById('selectedArea').style.display = 'block';
             document.getElementById('areaName').textContent = name;
         } catch (error) {
@@ -107,22 +286,20 @@ const MapManager = {
 
         const map = L.map('commuteMap').setView([AppState.searchData.location.lat, AppState.searchData.location.lng], 12);
 
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap contributors',
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+            attribution: '© OpenStreetMap contributors, © CARTO',
             maxZoom: 19
         }).addTo(map);
 
         map.on('click', (e) => {
             const { lat, lng } = e.latlng;
 
-            // Remove existing markers
             map.eachLayer((layer) => {
                 if (layer instanceof L.Marker) {
                     map.removeLayer(layer);
                 }
             });
 
-            // Add marker
             L.marker([lat, lng]).addTo(map)
                 .bindPopup('Work Location')
                 .openPopup();
@@ -144,17 +321,15 @@ const MapManager = {
             AppState.searchData.location.zoom
         );
 
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap contributors',
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+            attribution: '© OpenStreetMap contributors, © CARTO',
             maxZoom: 19
         }).addTo(map);
 
-        // Add search area marker
         L.marker([AppState.searchData.location.lat, AppState.searchData.location.lng])
             .addTo(map)
             .bindPopup('Search Area Center');
 
-        // Add commute marker if set
         if (AppState.searchData.preferences.commuteCoords) {
             const { lat, lng } = AppState.searchData.preferences.commuteCoords;
             L.marker([lat, lng], {
@@ -172,107 +347,288 @@ const MapManager = {
         AppState.maps.review = map;
     },
 
-    initExplorerMap() {
+    async initExplorerMap() {
         if (AppState.maps.explorer) {
             AppState.maps.explorer.remove();
         }
 
         const map = L.map('explorerMap').setView(
             [AppState.searchData.location.lat, AppState.searchData.location.lng],
-            14 // Zoom in closer for neighborhood view
+            14
         );
 
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap contributors',
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+            attribution: '© OpenStreetMap contributors, © CARTO',
             maxZoom: 19
         }).addTo(map);
 
-        // Add demo neighborhood overlays
-        this.addNeighborhoodOverlays(map);
+        // Generate heat map data
+        await this.generateHeatmapData();
 
-        // Handle clicks for neighborhood info
-        map.on('click', (e) => {
-            this.showNeighborhoodInfo(e.latlng);
-        });
+        // Add heat map layer
+        this.addHeatmapLayer(map);
+
+        // Add invisible markers for hover tooltips
+        this.addInteractiveMarkers(map);
 
         AppState.maps.explorer = map;
 
-        // Setup map controls
         this.setupMapControls(map);
     },
 
-    addNeighborhoodOverlays(map) {
-        // Create sample neighborhood boundaries
+    async generateHeatmapData() {
         const centerLat = AppState.searchData.location.lat;
         const centerLng = AppState.searchData.location.lng;
+        const criteria = AppState.searchData.criteria;
+        const preferences = AppState.searchData.preferences;
 
-        // Generate demo neighborhoods with different match levels
-        const neighborhoods = [
-            { name: 'Green Valley', match: 'high', offset: [0.01, 0.01], color: '#4CAF50' },
-            { name: 'Sunset District', match: 'medium', offset: [-0.01, 0.01], color: '#FFC107' },
-            { name: 'Oak Hills', match: 'high', offset: [0.01, -0.01], color: '#4CAF50' },
-            { name: 'River Park', match: 'low', offset: [-0.01, -0.01], color: '#F44336' },
-            { name: 'Downtown', match: 'medium', offset: [0.005, -0.005], color: '#FFC107' }
-        ];
+        AppState.heatmapData = [];
+        AppState.neighborhoodData = [];
 
-        neighborhoods.forEach(neighborhood => {
-            const bounds = [
-                [centerLat + neighborhood.offset[0], centerLng + neighborhood.offset[1]],
-                [centerLat + neighborhood.offset[0] + 0.008, centerLng + neighborhood.offset[1] + 0.008]
-            ];
+        // Generate grid of points around the search area
+        const gridSize = 20; // 20x20 grid
+        const latRange = 0.08; // ~5 miles
+        const lngRange = 0.08;
 
-            const rectangle = L.rectangle(bounds, {
-                color: neighborhood.color,
-                fillColor: neighborhood.color,
-                fillOpacity: 0.3,
-                weight: 2
-            }).addTo(map);
+        for (let i = 0; i < gridSize; i++) {
+            for (let j = 0; j < gridSize; j++) {
+                const lat = centerLat - latRange/2 + (latRange / gridSize) * i;
+                const lng = centerLng - lngRange/2 + (lngRange / gridSize) * j;
 
-            rectangle.bindPopup(`
-                <strong>${neighborhood.name}</strong><br>
-                Match: ${neighborhood.match}<br>
-                <em>Click for details</em>
-            `);
+                // Calculate score for this point
+                const result = await ScoringEngine.calculateScore(lat, lng, criteria, preferences);
 
-            rectangle.on('click', () => {
-                this.showDetailedNeighborhoodInfo(neighborhood);
+                // Normalize score for heat map (0-1 range, higher is better)
+                const intensity = result.scores.overall / 100;
+
+                // Add to heat map data [lat, lng, intensity]
+                AppState.heatmapData.push([lat, lng, intensity]);
+
+                // Store detailed data for tooltips
+                AppState.neighborhoodData.push({
+                    lat,
+                    lng,
+                    ...result
+                });
+            }
+        }
+    },
+
+    addHeatmapLayer(map) {
+        if (this.heatLayer) {
+            map.removeLayer(this.heatLayer);
+        }
+
+        // Create heat map with custom gradient
+        this.heatLayer = L.heatLayer(AppState.heatmapData, {
+            radius: 35,
+            blur: 25,
+            maxZoom: 17,
+            max: 1.0,
+            gradient: {
+                0.0: 'rgba(0, 0, 255, 0)',
+                0.2: 'rgba(0, 128, 255, 0.4)',
+                0.4: 'rgba(0, 255, 255, 0.5)',
+                0.5: 'rgba(0, 255, 0, 0.6)',
+                0.7: 'rgba(255, 255, 0, 0.7)',
+                0.85: 'rgba(255, 128, 0, 0.8)',
+                1.0: 'rgba(255, 0, 0, 0.9)'
+            }
+        }).addTo(map);
+    },
+
+    addInteractiveMarkers(map) {
+        // Remove old marker layer
+        if (this.invisibleMarkerLayer) {
+            map.removeLayer(this.invisibleMarkerLayer);
+        }
+
+        // Create transparent circle markers at each data point for interactivity
+        const markers = AppState.neighborhoodData.map(data => {
+            const marker = L.circleMarker([data.lat, data.lng], {
+                radius: 8,
+                fillColor: 'transparent',
+                color: 'transparent',
+                weight: 0,
+                fillOpacity: 0
             });
+
+            // Add hover events
+            marker.on('mouseover', (e) => {
+                this.showCustomTooltip(e, data, map);
+            });
+
+            marker.on('mouseout', () => {
+                this.hideCustomTooltip();
+            });
+
+            marker.on('click', () => {
+                this.showDetailedNeighborhoodInfo(data);
+            });
+
+            return marker;
         });
+
+        this.invisibleMarkerLayer = L.layerGroup(markers).addTo(map);
     },
 
-    showNeighborhoodInfo(latlng) {
-        const infoDiv = document.getElementById('neighborhoodDetails');
-        infoDiv.innerHTML = `
-            <p><strong>Location:</strong> ${latlng.lat.toFixed(4)}, ${latlng.lng.toFixed(4)}</p>
-            <p><em>Click on a colored neighborhood area for detailed information</em></p>
+    showCustomTooltip(e, data, map) {
+        this.hideCustomTooltip();
+
+        const crimeLevel = CrimeDataService.getCrimeLevel(data.scores.crime);
+
+        const tooltipHTML = `
+            <div class="neighborhood-tooltip">
+                <div class="tooltip-header">
+                    <div class="tooltip-title">Neighborhood Analysis</div>
+                    <div class="tooltip-match-score">${data.scores.overall}%</div>
+                </div>
+
+                <div class="tooltip-section">
+                    <div class="tooltip-section-title">Key Metrics</div>
+
+                    <div class="tooltip-metric">
+                        <span class="tooltip-metric-label">Safety Score</span>
+                        <span class="tooltip-metric-value">
+                            ${data.scores.crime}%
+                            <span class="tooltip-crime-level ${crimeLevel.class}">${crimeLevel.level}</span>
+                        </span>
+                    </div>
+
+                    <div class="tooltip-metric">
+                        <span class="tooltip-metric-label">School Rating</span>
+                        <span class="tooltip-metric-value">
+                            ${data.scores.schools}%
+                            <div class="metric-bar">
+                                <div class="metric-bar-fill" style="width: ${data.scores.schools}%"></div>
+                            </div>
+                        </span>
+                    </div>
+
+                    <div class="tooltip-metric">
+                        <span class="tooltip-metric-label">Amenities</span>
+                        <span class="tooltip-metric-value">
+                            ${data.scores.amenities}%
+                            <div class="metric-bar">
+                                <div class="metric-bar-fill" style="width: ${data.scores.amenities}%"></div>
+                            </div>
+                        </span>
+                    </div>
+
+                    ${data.scores.commute < 75 ? `
+                    <div class="tooltip-metric">
+                        <span class="tooltip-metric-label">Commute</span>
+                        <span class="tooltip-metric-value">
+                            ${data.scores.commute}%
+                            <div class="metric-bar">
+                                <div class="metric-bar-fill" style="width: ${data.scores.commute}%"></div>
+                            </div>
+                        </span>
+                    </div>
+                    ` : ''}
+
+                    <div class="tooltip-metric">
+                        <span class="tooltip-metric-label">Avg. Price</span>
+                        <span class="tooltip-metric-value">$${data.avgPrice.toLocaleString()}</span>
+                    </div>
+                </div>
+
+                ${data.reasons.length > 0 ? `
+                <div class="tooltip-reasons">
+                    <div class="tooltip-section-title">Why this score?</div>
+                    ${data.reasons.map(reason => `
+                        <div class="tooltip-reason">${reason}</div>
+                    `).join('')}
+                </div>
+                ` : ''}
+            </div>
         `;
+
+        // Create tooltip element
+        const tooltipElement = document.createElement('div');
+        tooltipElement.innerHTML = tooltipHTML;
+        tooltipElement.style.position = 'absolute';
+        tooltipElement.style.zIndex = '10000';
+        tooltipElement.style.pointerEvents = 'none';
+
+        // Position tooltip
+        const point = map.latLngToContainerPoint(e.latlng);
+        tooltipElement.style.left = (point.x + 15) + 'px';
+        tooltipElement.style.top = (point.y - 50) + 'px';
+
+        map.getContainer().appendChild(tooltipElement);
+        this.customTooltip = tooltipElement;
     },
 
-    showDetailedNeighborhoodInfo(neighborhood) {
-        const infoDiv = document.getElementById('neighborhoodDetails');
+    hideCustomTooltip() {
+        if (this.customTooltip && this.customTooltip.parentNode) {
+            this.customTooltip.parentNode.removeChild(this.customTooltip);
+            this.customTooltip = null;
+        }
+    },
 
-        // Generate mock data based on criteria
-        const matchPercentage = neighborhood.match === 'high' ? 85 : neighborhood.match === 'medium' ? 65 : 45;
-        const avgPrice = Math.floor(Math.random() * 500000) + 300000;
-        const schools = Math.floor(Math.random() * 5) + 5;
+    showDetailedNeighborhoodInfo(data) {
+        const infoDiv = document.getElementById('neighborhoodDetails');
+        const crimeLevel = CrimeDataService.getCrimeLevel(data.scores.crime);
 
         infoDiv.innerHTML = `
             <div style="margin-bottom: 1rem;">
-                <h4 style="margin-bottom: 0.5rem;">${neighborhood.name}</h4>
-                <div style="background: ${neighborhood.color}; color: white; padding: 0.5rem; border-radius: 4px; text-align: center; font-weight: 600;">
-                    ${matchPercentage}% Match
+                <h4 style="margin-bottom: 0.75rem; font-size: 1.1rem;">Area Details</h4>
+                <div style="background: var(--gradient-primary); color: white; padding: 0.75rem; border-radius: 8px; text-align: center; font-weight: 700; font-size: 1.2rem;">
+                    ${data.scores.overall}% Match
                 </div>
             </div>
 
-            <div style="font-size: 0.9rem;">
-                <p style="margin: 0.5rem 0;"><strong>Avg. Price:</strong> $${avgPrice.toLocaleString()}</p>
-                <p style="margin: 0.5rem 0;"><strong>School Rating:</strong> ${schools}/10</p>
-                <p style="margin: 0.5rem 0;"><strong>Crime Rate:</strong> ${neighborhood.match === 'high' ? 'Low' : neighborhood.match === 'medium' ? 'Medium' : 'Higher'}</p>
-                <p style="margin: 0.5rem 0;"><strong>Walk Score:</strong> ${Math.floor(Math.random() * 30) + 70}</p>
-                <p style="margin: 0.5rem 0;"><strong>Transit Score:</strong> ${Math.floor(Math.random() * 40) + 50}</p>
+            <div style="font-size: 0.9rem; margin-top: 1rem;">
+                <div style="margin-bottom: 0.75rem; padding-bottom: 0.75rem; border-bottom: 1px solid var(--border-color);">
+                    <strong style="color: var(--primary-light);">Safety Score:</strong>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.25rem;">
+                        <span>${data.scores.crime}%</span>
+                        <span class="tooltip-crime-level ${crimeLevel.class}">${crimeLevel.level} Crime</span>
+                    </div>
+                </div>
+
+                <div style="margin-bottom: 0.75rem; padding-bottom: 0.75rem; border-bottom: 1px solid var(--border-color);">
+                    <strong style="color: var(--primary-light);">School Rating:</strong>
+                    <span style="float: right;">${data.scores.schools}/100</span>
+                </div>
+
+                <div style="margin-bottom: 0.75rem; padding-bottom: 0.75rem; border-bottom: 1px solid var(--border-color);">
+                    <strong style="color: var(--primary-light);">Amenities Score:</strong>
+                    <span style="float: right;">${data.scores.amenities}/100</span>
+                </div>
+
+                <div style="margin-bottom: 0.75rem; padding-bottom: 0.75rem; border-bottom: 1px solid var(--border-color);">
+                    <strong style="color: var(--primary-light);">Avg. Price:</strong>
+                    <span style="float: right;">$${data.avgPrice.toLocaleString()}</span>
+                </div>
+
+                <div style="margin-bottom: 0.75rem; padding-bottom: 0.75rem; border-bottom: 1px solid var(--border-color);">
+                    <strong style="color: var(--primary-light);">Crime Rate:</strong>
+                    <span style="float: right;">${data.crimeData.crimeRate.toFixed(1)} per 1K</span>
+                </div>
+
+                <div style="margin-bottom: 0.75rem;">
+                    <strong style="color: var(--primary-light);">Crime Trend:</strong>
+                    <span style="float: right; color: ${data.crimeData.trend === 'decreasing' ? 'var(--success-color)' : 'var(--warning-color)'};">
+                        ${data.crimeData.trend === 'decreasing' ? '↓' : '↑'} ${data.crimeData.trend}
+                    </span>
+                </div>
             </div>
 
-            <button class="btn-secondary full-width" style="margin-top: 1rem;" onclick="alert('In a real application, this would show detailed property listings for ${neighborhood.name}')">
+            ${data.reasons.length > 0 ? `
+            <div style="margin-top: 1.5rem; padding-top: 1rem; border-top: 2px solid var(--border-color);">
+                <strong style="color: var(--primary-light); display: block; margin-bottom: 0.75rem;">Analysis:</strong>
+                ${data.reasons.map(reason => `
+                    <div style="margin-bottom: 0.5rem; padding-left: 1rem; position: relative; font-size: 0.85rem; color: var(--text-secondary);">
+                        <span style="position: absolute; left: 0; color: var(--primary-color);">•</span>
+                        ${reason}
+                    </div>
+                `).join('')}
+            </div>
+            ` : ''}
+
+            <button class="btn-secondary full-width" style="margin-top: 1.5rem;" onclick="alert('In a real application, this would show detailed property listings for this area')">
                 View Listings
             </button>
         `;
@@ -309,15 +665,12 @@ const StepManager = {
     },
 
     nextStep() {
-        // Validate current step
         if (!this.validateStep(AppState.currentStep)) {
             return;
         }
 
-        // Collect data from current step
         this.collectStepData(AppState.currentStep);
 
-        // Move to next step
         if (AppState.currentStep < AppState.totalSteps) {
             AppState.currentStep++;
             this.updateUI();
@@ -342,7 +695,6 @@ const StepManager = {
                 }
                 return true;
             case 2:
-                // Check at least one property type is selected
                 const propertyTypes = document.querySelectorAll('input[name="propertyType"]:checked');
                 if (propertyTypes.length === 0) {
                     alert('Please select at least one property type.');
@@ -384,7 +736,6 @@ const StepManager = {
     onStepEnter(step) {
         switch(step) {
             case 3:
-                // Show commute map if button is clicked
                 document.getElementById('setCommuteBtn').addEventListener('click', function() {
                     const container = document.getElementById('commuteMapContainer');
                     container.style.display = 'block';
@@ -401,18 +752,34 @@ const StepManager = {
                 break;
             case 5:
                 this.populateExplorerStep();
-                setTimeout(() => {
-                    MapManager.initExplorerMap();
+                setTimeout(async () => {
+                    // Show loading message
+                    const infoDiv = document.getElementById('neighborhoodDetails');
+                    infoDiv.innerHTML = `
+                        <div style="text-align: center; padding: 2rem;">
+                            <div style="font-size: 2rem; margin-bottom: 1rem;">🔍</div>
+                            <div style="color: var(--primary-color); font-weight: 600;">Analyzing neighborhoods...</div>
+                            <div style="color: var(--text-secondary); font-size: 0.85rem; margin-top: 0.5rem;">
+                                Calculating crime data, schools, amenities
+                            </div>
+                        </div>
+                    `;
+
+                    await MapManager.initExplorerMap();
+
+                    infoDiv.innerHTML = `
+                        <p style="color: var(--text-secondary); font-style: italic;">
+                            Hover over the heat map to see detailed neighborhood information
+                        </p>
+                    `;
                 }, 100);
                 break;
         }
     },
 
     populateReviewStep() {
-        // Location
         document.getElementById('reviewArea').textContent = AppState.searchData.location.name;
 
-        // Criteria
         const { criteria } = AppState.searchData;
         const priceMin = criteria.priceMin === 0 ? 'No min' : `$${criteria.priceMin.toLocaleString()}`;
         const priceMax = criteria.priceMax === 9999999 ? 'No max' : `$${criteria.priceMax.toLocaleString()}`;
@@ -429,7 +796,6 @@ const StepManager = {
         const sqftMax = criteria.sqftMax ? criteria.sqftMax.toLocaleString() : 'No max';
         document.getElementById('reviewSqft').textContent = `${sqftMin} - ${sqftMax} sq ft`;
 
-        // Preferences
         const { preferences } = AppState.searchData;
         document.getElementById('reviewCommute').textContent = preferences.commuteLocation || 'Not set';
         document.getElementById('reviewMaxCommute').textContent = preferences.maxCommute === 0 ? 'Any' : `${preferences.maxCommute} min`;
@@ -440,7 +806,6 @@ const StepManager = {
     },
 
     populateExplorerStep() {
-        // Populate criteria summary
         const criteriaDiv = document.getElementById('criteriaList');
         const { criteria, preferences } = AppState.searchData;
 
@@ -455,7 +820,6 @@ const StepManager = {
             ${preferences.maxCommute > 0 ? `<div><strong>Max Commute:</strong> ${preferences.maxCommute} min</div>` : ''}
         `;
 
-        // Setup action buttons
         document.getElementById('editCriteriaBtn').addEventListener('click', () => {
             AppState.currentStep = 2;
             this.updateUI();
@@ -502,7 +866,6 @@ const StepManager = {
                 url: shareUrl
             });
         } else {
-            // Fallback: copy to clipboard
             navigator.clipboard.writeText(shareUrl).then(() => {
                 alert('Search link copied to clipboard!');
             }).catch(() => {
@@ -512,19 +875,16 @@ const StepManager = {
     },
 
     updateUI() {
-        // Update step visibility
         document.querySelectorAll('.wizard-step').forEach((step, index) => {
             step.classList.toggle('active', index + 1 === AppState.currentStep);
         });
 
-        // Update progress bar
         document.querySelectorAll('.progress-step').forEach((step, index) => {
             const stepNum = index + 1;
             step.classList.toggle('active', stepNum === AppState.currentStep);
             step.classList.toggle('completed', stepNum < AppState.currentStep);
         });
 
-        // Update navigation buttons
         const prevBtn = document.getElementById('prevBtn');
         const nextBtn = document.getElementById('nextBtn');
 
@@ -537,7 +897,6 @@ const StepManager = {
             nextBtn.style.display = 'inline-flex';
         }
 
-        // Scroll to top
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 };
@@ -576,20 +935,16 @@ const SearchManager = {
                 const lat = parseFloat(place.lat);
                 const lng = parseFloat(place.lon);
 
-                // Update map
                 AppState.maps.main.setView([lat, lng], 12);
 
-                // Remove existing markers
                 AppState.maps.main.eachLayer((layer) => {
                     if (layer instanceof L.Marker) {
                         AppState.maps.main.removeLayer(layer);
                     }
                 });
 
-                // Add marker
                 L.marker([lat, lng]).addTo(AppState.maps.main);
 
-                // Update state
                 AppState.searchData.location = {
                     lat,
                     lng,
@@ -597,7 +952,6 @@ const SearchManager = {
                     zoom: 12
                 };
 
-                // Update UI
                 document.getElementById('selectedArea').style.display = 'block';
                 document.getElementById('areaName').textContent = place.display_name;
             } else {
@@ -629,7 +983,6 @@ const URLManager = {
                 AppState.searchData.criteria.priceMax = parseInt(params.get('priceMax'));
             }
 
-            // Update map view
             if (AppState.maps.main) {
                 AppState.maps.main.setView(
                     [AppState.searchData.location.lat, AppState.searchData.location.lng],
@@ -645,15 +998,13 @@ const URLManager = {
 // ===================================
 
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('Home Buyer Map - Application Starting...');
+    console.log('Home Buyer Map - Enhanced Application Starting...');
 
-    // Initialize all managers
     MapManager.init();
     StepManager.init();
     SearchManager.init();
     URLManager.init();
 
-    // Try to load saved search
     try {
         const savedSearch = localStorage.getItem('homeBuyerSearch');
         if (savedSearch) {
