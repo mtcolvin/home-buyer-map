@@ -64,19 +64,32 @@
 
                     <div class="form-section">
                         <div class="search-box">
-                            <input type="text" id="citySearch" placeholder="Search for a city or zip code..." class="search-input">
+                            <input type="text" id="citySearch" placeholder="Search for a city or zip code..." class="search-input" aria-label="Search for a city or zip code">
                             <button class="search-btn" id="searchBtn">Search</button>
+                        </div>
+
+                        <!-- Map Hint -->
+                        <div class="map-hint" id="mapHint">
+                            <div class="hint-content">
+                                <span class="hint-icon">👆</span>
+                                <span>Click anywhere on the map to select your search area</span>
+                            </div>
                         </div>
 
                         <div class="map-container">
                             <div id="map"></div>
+                            <div class="map-pulse-indicator" id="mapPulse" style="display: none;"></div>
                         </div>
 
                         <div class="selected-area" id="selectedArea" style="display: none;">
                             <div class="alert alert-success">
-                                <strong>Selected Area:</strong> <span id="areaName">Not selected</span>
+                                <strong>✓ Selected Area:</strong> <span id="areaName">Not selected</span>
+                                <button class="btn-link-small" id="changeArea">Change</button>
                             </div>
                         </div>
+
+                        <!-- Validation Message -->
+                        <div class="validation-message" id="step1Validation" style="display: none;"></div>
                     </div>
                 </div>
             </section>
@@ -87,13 +100,17 @@
                     <div class="step-header">
                         <h2>What are your home requirements?</h2>
                         <p>Set your budget and property preferences</p>
+                        <button class="btn-link skip-step-btn" id="skipStep2">Skip this step →</button>
                     </div>
 
                     <div class="form-section">
                         <div class="form-grid">
                             <div class="form-group">
-                                <label for="priceMin">Minimum Price</label>
-                                <select id="priceMin" class="form-control">
+                                <label for="priceMin">
+                                    Minimum Price
+                                    <span class="tooltip-icon" data-tooltip="The lowest price you're willing to pay">ⓘ</span>
+                                </label>
+                                <select id="priceMin" class="form-control" aria-label="Minimum price">
                                     <option value="0">No minimum</option>
                                     <option value="100000">$100,000</option>
                                     <option value="200000">$200,000</option>
@@ -106,8 +123,11 @@
                             </div>
 
                             <div class="form-group">
-                                <label for="priceMax">Maximum Price</label>
-                                <select id="priceMax" class="form-control">
+                                <label for="priceMax">
+                                    Maximum Price
+                                    <span class="tooltip-icon" data-tooltip="The highest price you're willing to pay">ⓘ</span>
+                                </label>
+                                <select id="priceMax" class="form-control" aria-label="Maximum price">
                                     <option value="9999999">No maximum</option>
                                     <option value="200000">$200,000</option>
                                     <option value="300000">$300,000</option>
@@ -118,10 +138,14 @@
                                     <option value="1500000">$1,500,000</option>
                                     <option value="2000000">$2,000,000+</option>
                                 </select>
+                                <div class="field-validation" id="priceValidation"></div>
                             </div>
 
                             <div class="form-group full-width">
-                                <label>Property Type</label>
+                                <label>
+                                    Property Type <span class="required-indicator">*</span>
+                                    <span class="tooltip-icon" data-tooltip="Select all property types you're interested in">ⓘ</span>
+                                </label>
                                 <div class="checkbox-group">
                                     <label class="checkbox-label">
                                         <input type="checkbox" name="propertyType" value="house" checked>
@@ -167,15 +191,25 @@
                             </div>
 
                             <div class="form-group">
-                                <label for="sqftMin">Min Square Feet</label>
-                                <input type="number" id="sqftMin" class="form-control" placeholder="e.g., 1000" min="0" step="100">
+                                <label for="sqftMin">
+                                    Min Square Feet
+                                    <span class="tooltip-icon" data-tooltip="Minimum home size you're looking for">ⓘ</span>
+                                </label>
+                                <input type="number" id="sqftMin" class="form-control" placeholder="e.g., 1000" min="0" step="100" aria-label="Minimum square feet">
                             </div>
 
                             <div class="form-group">
-                                <label for="sqftMax">Max Square Feet</label>
-                                <input type="number" id="sqftMax" class="form-control" placeholder="e.g., 3000" min="0" step="100">
+                                <label for="sqftMax">
+                                    Max Square Feet
+                                    <span class="tooltip-icon" data-tooltip="Maximum home size you're looking for">ⓘ</span>
+                                </label>
+                                <input type="number" id="sqftMax" class="form-control" placeholder="e.g., 3000" min="0" step="100" aria-label="Maximum square feet">
+                                <div class="field-validation" id="sqftValidation"></div>
                             </div>
                         </div>
+
+                        <!-- Validation Message -->
+                        <div class="validation-message" id="step2Validation" style="display: none;"></div>
                     </div>
                 </div>
             </section>
@@ -185,17 +219,20 @@
                 <div class="step-content">
                     <div class="step-header">
                         <h2>What's important for your location?</h2>
-                        <p>Set commute preferences and nearby amenities</p>
+                        <p>Set commute preferences and nearby amenities (all optional)</p>
+                        <button class="btn-link skip-step-btn" id="skipStep3">Skip this step →</button>
                     </div>
 
                     <div class="form-section">
                         <div class="form-group">
-                            <label for="commuteLocation">Commute To (Optional)</label>
-                            <input type="text" id="commuteLocation" class="form-control" placeholder="Enter work address or click on map">
-                            <button class="btn-secondary" id="setCommuteBtn" style="margin-top: 10px;">Set on Map</button>
+                            <label for="commuteLocation">
+                                Commute To (Optional)
+                                <span class="tooltip-icon" data-tooltip="Enter your work address or click on the map below">ⓘ</span>
+                            </label>
+                            <input type="text" id="commuteLocation" class="form-control" placeholder="Enter work address or click on map" aria-label="Commute location">
                         </div>
 
-                        <div id="commuteMapContainer" class="map-container-small" style="display: none;">
+                        <div id="commuteMapContainer" class="map-container-small">
                             <div id="commuteMap"></div>
                         </div>
 
@@ -250,14 +287,20 @@
                         </div>
 
                         <div class="form-group">
-                            <label for="neighborhoodType">Neighborhood Type</label>
-                            <select id="neighborhoodType" class="form-control">
+                            <label for="neighborhoodType">
+                                Neighborhood Type
+                                <span class="tooltip-icon" data-tooltip="Choose the type of environment you prefer">ⓘ</span>
+                            </label>
+                            <select id="neighborhoodType" class="form-control" aria-label="Neighborhood type">
                                 <option value="">No preference</option>
                                 <option value="urban">Urban - City center, walkable</option>
                                 <option value="suburban">Suburban - Residential, family-friendly</option>
                                 <option value="rural">Rural - Quiet, spacious</option>
                             </select>
                         </div>
+
+                        <!-- Validation Message -->
+                        <div class="validation-message" id="step3Validation" style="display: none;"></div>
                     </div>
                 </div>
             </section>
@@ -347,6 +390,11 @@
                         <p>Zoom in and explore specific blocks to find your ideal location</p>
                     </div>
 
+                    <!-- Demo Data Disclaimer -->
+                    <div class="alert alert-info demo-disclaimer">
+                        <strong>ℹ️ Demo Mode:</strong> This is a demonstration. Neighborhood data shown below is simulated for illustration purposes. In a production app, this would show real property listings and neighborhood data.
+                    </div>
+
                     <div class="explorer-container">
                         <div class="explorer-sidebar">
                             <div class="criteria-summary">
@@ -412,6 +460,92 @@
 
     <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <!-- Toast Notification Container -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay" style="display: none;">
+        <div class="loading-spinner"></div>
+        <p class="loading-text">Loading...</p>
+    </div>
+
+    <!-- Share Modal -->
+    <div id="shareModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Share Your Search</h3>
+                <button class="modal-close" id="closeShareModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p>Share your home search criteria with others:</p>
+                <div class="share-url-container">
+                    <input type="text" id="shareUrl" class="share-url-input" readonly>
+                    <button class="btn btn-primary" id="copyShareUrl">Copy Link</button>
+                </div>
+                <div class="share-buttons">
+                    <button class="share-btn" id="shareEmail">📧 Email</button>
+                    <button class="share-btn" id="shareTwitter">🐦 Twitter</button>
+                    <button class="share-btn" id="shareFacebook">📘 Facebook</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Onboarding Tour Overlay -->
+    <div id="tourOverlay" class="tour-overlay" style="display: none;">
+        <div class="tour-spotlight"></div>
+        <div class="tour-tooltip">
+            <div class="tour-content">
+                <h3 id="tourTitle"></h3>
+                <p id="tourMessage"></p>
+                <div class="tour-footer">
+                    <button class="btn-link" id="tourSkip">Skip Tour</button>
+                    <div class="tour-pagination">
+                        <span id="tourProgress">1 of 5</span>
+                        <button class="btn btn-primary" id="tourNext">Next</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Keyboard Shortcuts Help -->
+    <div id="shortcutsModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Keyboard Shortcuts</h3>
+                <button class="modal-close" id="closeShortcutsModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="shortcuts-list">
+                    <div class="shortcut-item">
+                        <kbd>→</kbd> or <kbd>Enter</kbd>
+                        <span>Next Step</span>
+                    </div>
+                    <div class="shortcut-item">
+                        <kbd>←</kbd> or <kbd>Backspace</kbd>
+                        <span>Previous Step</span>
+                    </div>
+                    <div class="shortcut-item">
+                        <kbd>?</kbd>
+                        <span>Show Keyboard Shortcuts</span>
+                    </div>
+                    <div class="shortcut-item">
+                        <kbd>Ctrl</kbd> + <kbd>S</kbd>
+                        <span>Save Search</span>
+                    </div>
+                    <div class="shortcut-item">
+                        <kbd>Esc</kbd>
+                        <span>Close Modals</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Help Button (Floating) -->
+    <button class="help-fab" id="helpFab" title="Show keyboard shortcuts (?)">?</button>
 
     <!-- Custom JS -->
     <script src="app.js"></script>
